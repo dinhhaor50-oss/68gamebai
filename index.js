@@ -135,6 +135,22 @@ async function connectWS() {
 
       if (evt === 'session-result') {
         console.log('🎲 Result:', JSON.stringify(payload));
+        // Lưu bet data vào phiên vừa kết thúc
+        if (currentBet && sessions.length > 0) {
+          const idx = sessions.findIndex(s => s.Phien === currentBet.sessionId);
+          if (idx >= 0) {
+            sessions[idx].betData = {
+              taiUsers: currentBet.taiUsers,
+              xiuUsers: currentBet.xiuUsers,
+              taiAmount: currentBet.taiAmount,
+              xiuAmount: currentBet.xiuAmount,
+              totalUsers: currentBet.totalUsers,
+              totalAmount: currentBet.totalAmount,
+              lastTick: currentBet.tick,
+              lastSubTick: currentBet.subTick
+            };
+          }
+        }
         setTimeout(poll, 2000);
       }
     } catch(e) {}
