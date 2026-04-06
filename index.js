@@ -128,6 +128,18 @@ app.use((req,res,next)=>{
   if(req.method==='OPTIONS')return res.sendStatus(200);
   next();
 });
+app.get('/api/myip', async (req, res) => {
+  try {
+    const r = await new Promise((resolve, reject) => {
+      https.get('https://api.ipify.org?format=json', (resp) => {
+        let d = '';
+        resp.on('data', c => d += c);
+        resp.on('end', () => resolve(JSON.parse(d)));
+      }).on('error', reject);
+    });
+    res.json(r);
+  } catch(e) { res.json({error: e.message}); }
+});
 app.get('/api/lichsu',(req,res)=>res.json(sessions.slice(0,parseInt(req.query.limit)||200)));
 app.get('/api/status',(req,res)=>res.json({ws:wsClient?['CONNECTING','OPEN','CLOSING','CLOSED'][wsClient.readyState]:'NULL',proxy:PROXY_URL?'YES':'NO',sessions:sessions.length,latest:sessions[0]||null,uptime:Math.floor(process.uptime())+'s'}));
 app.get('/',(req,res)=>res.send(`<h2>🎲 TX</h2><p>WS:${wsClient?['CONNECTING','OPEN','CLOSING','CLOSED'][wsClient.readyState]:'NULL'} Sessions:${sessions.length}</p><a href="/api/lichsu">/api/lichsu</a>`));
