@@ -7,7 +7,7 @@ const { URL } = require('url');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const GAME_WS_URL = 'wss://xyambju0tz.cq.qnwxdhwica.com';
+const GAME_WS_URL = process.env.GAME_WS_URL || 'wss://connect.gloryclub.in';
 const TOKEN = process.env.GAME_TOKEN || 'c89a6fd48bc0488cbfe9fc4479de7f9ea685c3c0cac04984a74dfd2620cb529c';
 const PROXY_URL = process.env.PROXY_URL || '';
 
