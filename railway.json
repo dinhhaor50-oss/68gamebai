@@ -1,0 +1,14 @@
+{
+  "schema": "railway",
+  "build": {
+    "builder": "NIXPACKS",
+    "options": {
+      "pythonVersion": "3.11"
+    }
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

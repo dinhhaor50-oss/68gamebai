@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài Xỉu Predictor - AI RandomForest</title>
+    <style>
+        :root {
+            --bg-dark: #0f1117;
+            --bg-card: #1a1d27;
+            --bg-card-hover: #1f2330;
+            --accent: #6c5ce7;
+            --accent-light: #a29bfe;
+            --tai: #e17055;
+            --xiu: #0984e3;
+            --success: #00b894;
+            --danger: #d63031;
+            --text: #dfe6e9;
+            --text-dim: #636e72;
+            --border: #2d3436;
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .header-left h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-left span {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .live-dot {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--success);
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .btn {
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+        }
+
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+
+        .stat-card:hover { border-color: var(--accent); }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value.tai { color: var(--tai); }
+        .stat-value.xiu { color: var(--xiu); }
+        .stat-value.success { color: var(--success); }
+        .stat-value.danger { color: var(--danger); }
+        .stat-value.accent { color: var(--accent-light); }
+
+        /* Prediction Card */
+        .prediction-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .prediction-section { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+        }
+
+        .card-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 3px;
+            height: 14px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .pred-main {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .pred-label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+
+        .pred-value {
+            font-size: 4rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            transition: color 0.3s;
+        }
+
+        .pred-value.tai { color: var(--tai); }
+        .pred-value.xiu { color: var(--xiu); }
+
+        .pred-prob {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .pred-confidence {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .prob-bar-wrap {
+            margin-top: 16px;
+        }
+
+        .prob-bar-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+        }
+
+        .prob-bar {
+            height: 8px;
+            background: var(--xiu);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            transition: width 0.5s ease;
+        }
+
+        .prob-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--xiu), var(--tai));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        /* Accuracy mini */
+        .accuracy-mini {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .accuracy-big {
+            font-size: 3rem;
+            font-weight: 900;
+            color: var(--success);
+        }
+
+        .accuracy-sub {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* Streak display */
+        .streak-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .streak-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .streak-icon { font-size: 1.4rem; margin-bottom: 4px; }
+        .streak-num { font-size: 1.6rem; font-weight: 800; }
+        .streak-num.success { color: var(--success); }
+        .streak-num.danger { color: var(--danger); }
+        .streak-label { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+
+        /* History Table */
+        .history-section .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .phien-info {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .history-table-wrap {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        thead th {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dim);
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+
+        tbody tr:hover { background: var(--bg-card-hover); }
+        tbody tr:last-child { border-bottom: none; }
+
+        tbody td {
+            padding: 9px 12px;
+            white-space: nowrap;
+        }
+
+        .result-tai { color: var(--tai); font-weight: 700; }
+        .result-xiu { color: var(--xiu); font-weight: 700; }
+        .result-dung { color: var(--success); font-weight: 700; }
+        .result-sai { color: var(--danger); font-weight: 700; }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-tai { background: rgba(225, 112, 85, 0.15); color: var(--tai); }
+        .badge-xiu { background: rgba(9, 132, 227, 0.15); color: var(--xiu); }
+
+        /* Loading */
+        .loading-overlay {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-dim);
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--danger); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-left">
+                <h1>TAI XIU PREDICTOR</h1>
+                <span>RandomForest AI &bull; Dữ liệu từ API</span>
+            </div>
+            <div class="header-right">
+                <div class="live-dot">
+                    <div class="dot"></div>
+                    <span>LIVE</span>
+                </div>
+                <button class="btn btn-primary" id="btnRefresh" onclick="refreshData()">
+                    &#8635; Cập nhật dữ liệu
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-value accent" id="statAccuracy">--</div>
+                <div class="stat-label">Tỷ lệ chính xác</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statTotal">--</div>
+                <div class="stat-label">Tổng dự đoán</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success" id="statCorrect">--</div>
+                <div class="stat-label">Đúng</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value danger" id="statWrong">--</div>
+                <div class="stat-label">Sai</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success" id="statLongestCorrect">--</div>
+                <div class="stat-label">Chuỗi đúng dài nhất</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value danger" id="statLongestWrong">--</div>
+                <div class="stat-label">Chuỗi sai dài nhất</div>
+            </div>
+        </div>
+
+        <!-- Prediction + Accuracy -->
+        <div class="prediction-section">
+            <!-- Dự đoán hiện tại -->
+            <div class="card">
+                <div class="card-title">Dự đoán tiếp theo</div>
+                <div class="pred-main" id="predMain">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <span>Đang tải...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thống kê nhanh -->
+            <div class="card">
+                <div class="card-title">Tổng quan</div>
+                <div class="accuracy-mini" id="accuracyMini">
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+
+                <div class="streak-row">
+                    <div class="streak-box">
+                        <div class="streak-icon">&#9989;</div>
+                        <div class="streak-num success" id="curCorrect">--</div>
+                        <div class="streak-label">Chuỗi đúng hiện tại</div>
+                    </div>
+                    <div class="streak-box">
+                        <div class="streak-icon">&#10060;</div>
+                        <div class="streak-num danger" id="curWrong">--</div>
+                        <div class="streak-label">Chuỗi sai hiện tại</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="card history-section">
+            <div class="card-header">
+                <div class="card-title" style="margin-bottom:0">Lịch sử dự đoán</div>
+                <div class="phien-info" id="phienInfo">Đang tải...</div>
+            </div>
+            <div class="history-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Phiên</th>
+                            <th>Dự đoán</th>
+                            <th>Kết quả</th>
+                            <th>Xúc xắc</th>
+                            <th>Tổng</th>
+                            <th>Xác suất</th>
+                            <th>Đ/S</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <tr>
+                            <td colspan="7">
+                                <div class="loading-overlay">
+                                    <div class="spinner"></div>
+                                    <span>Đang tải lịch sử...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="footer">
+            RandomForest AI &bull; Tự động cập nhật khi có phiên mới &bull; Lịch sử tối đa 500 phiên
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============ CONFIG ============
+        // Thay đổi API_BASE thành URL Railway của bạn khi deploy
+        const API_BASE = window.location.origin;
+        // const API_BASE = 'https://your-app.railway.app'; // Khi deploy lên Railway
+
+        let pollTimer = null;
+        let isRefreshing = false;
+
+        // ============ TOAST ============
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `toast ${type} show`;
+            setTimeout(() => { t.className = 'toast'; }, 3000);
+        }
+
+        // ============ API CALLS ============
+        async function apiCall(url, options = {}) {
+            try {
+                const resp = await fetch(API_BASE + url, {
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    ...options
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                return await resp.json();
+            } catch (e) {
+                console.error('API Error:', e);
+                return null;
+            }
+        }
+
+        // ============ LOAD ALL ============
+        async function loadAll() {
+            await Promise.all([loadPrediction(), loadHistory(), loadStats()]);
+        }
+
+        // ============ PREDICTION ============
+        async function loadPrediction() {
+            const data = await apiCall('/api/predict');
+            const el = document.getElementById('predMain');
+
+            if (!data || data.error) {
+                el.innerHTML = '<div class="pred-label">Chưa có dữ liệu</div>';
+                return;
+            }
+
+            const cls = data.prediction === 'Tài' ? 'tai' : 'xiu';
+            const probPct = data.probability;
+
+            el.innerHTML = `
+                <div class="pred-label">Kết quả dự đoán</div>
+                <div class="pred-value ${cls}">${data.prediction}</div>
+                <div class="pred-prob">${probPct}%</div>
+                <div class="pred-confidence">Độ tin cậy: ${data.confidence ?? 0}%</div>
+                <div class="prob-bar-wrap">
+                    <div class="prob-bar-labels">
+                        <span>Xỉu</span>
+                        <span>Tài</span>
+                    </div>
+                    <div class="prob-bar">
+                        <div class="prob-bar-fill" style="width: ${probPct}%"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============ HISTORY ============
+        async function loadHistory(limit = 300) {
+            const data = await apiCall(`/api/history?limit=${limit}`);
+            const tbody = document.getElementById('historyBody');
+
+            if (!data || !data.history) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim)">Không có dữ liệu</td></tr>';
+                return;
+            }
+
+            document.getElementById('phienInfo').textContent =
+                `Phiên mới nhất: ${data.latest_phien ?? '--'} &bull; Cập nhật: ${data.last_update ? new Date(data.last_update).toLocaleTimeString('vi-VN') : '--'}`;
+
+            if (data.history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim)">Chưa có lịch sử</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.history.map(row => {
+                const predCls = row.du_doan === 'Tài' ? 'result-tai' : 'result-xiu';
+                const isDung = row.dung_sai === 'Đúng';
+                const resultCls = isDung ? 'result-dung' : (row.dung_sai === 'Sai' ? 'result-sai' : '');
+
+                return `
+                    <tr>
+                        <td>${row.phien}</td>
+                        <td><span class="badge badge-${row.du_doan === 'Tài' ? 'tai' : 'xiu'}">${row.du_doan}</span></td>
+                        <td class="${row.ket_qua ? (row.ket_qua === 'Tài' ? 'result-tai' : 'result-xiu') : ''}">${row.ket_qua ?? '...'}</td>
+                        <td>${row.xuc_xac ?? '--'}</td>
+                        <td>${row.tong ?? '--'}</td>
+                        <td>${row.xac_suat ? (row.xac_suat * 100).toFixed(1) + '%' : '--'}</td>
+                        <td class="${resultCls}">${row.dung_sai ?? '...'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ============ STATS ============
+        async function loadStats() {
+            const data = await apiCall('/api/stats');
+
+            if (!data) return;
+
+            document.getElementById('statAccuracy').textContent =
+                data.total_predictions > 0 ? data.accuracy + '%' : '--';
+            document.getElementById('statTotal').textContent =
+                data.total_predictions ?? '--';
+            document.getElementById('statCorrect').textContent =
+                data.correct ?? '--';
+            document.getElementById('statWrong').textContent =
+                (data.total_predictions - data.correct) ?? '--';
+            document.getElementById('statLongestCorrect').textContent =
+                data.longest_correct ?? '--';
+            document.getElementById('statLongestWrong').textContent =
+                data.longest_wrong ?? '--';
+
+            // Accuracy mini
+            const accEl = document.getElementById('accuracyMini');
+            accEl.innerHTML = `
+                <div class="accuracy-big">${data.total_predictions > 0 ? data.accuracy + '%' : '--'}</div>
+                <div class="accuracy-sub">${data.total_predictions} dự đoán đã xác nhận</div>
+            `;
+
+            document.getElementById('curCorrect').textContent = data.current_streak_correct ?? '--';
+            document.getElementById('curWrong').textContent = data.current_streak_wrong ?? '--';
+        }
+
+        // ============ REFRESH ============
+        async function refreshData() {
+            if (isRefreshing) return;
+            isRefreshing = true;
+
+            const btn = document.getElementById('btnRefresh');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px;margin-right:6px;vertical-align:middle"></div>Đang cập nhật...';
+
+            showToast('Đang cập nhật dữ liệu...', 'info');
+
+            const result = await apiCall('/api/refresh', { method: 'POST' });
+
+            if (result && result.status === 'success') {
+                showToast('Cập nhật thành công!', 'success');
+                await loadAll();
+            } else {
+                showToast('Cập nhật thất bại!', 'error');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '&#8635; Cập nhật dữ liệu';
+            isRefreshing = false;
+        }
+
+        // ============ AUTO POLL ============
+        async function pollForUpdates() {
+            const data = await apiCall('/api/check-update');
+            if (data && data.has_update) {
+                showToast(`Phiên mới: ${data.current_phien}`, 'success');
+                await loadAll();
+            }
+        }
+
+        // ============ INIT ============
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAll();
+
+            // Poll mỗi 10 giây
+            pollTimer = setInterval(pollForUpdates, 10000);
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (pollTimer) clearInterval(pollTimer);
+        });
+    </script>
+</body>
+</html>
